@@ -1,5 +1,12 @@
 # Shtest - A simple test framework for shell scripts such as sh/bash/groovy
 
+## License
+license AGPL-3.0 This code and the package of Shtest are free software: you can redistribute it and/or modify it under the terms of the GNU Affero General Public License, version 3, as published by the Free Software Foundation.
+
+This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Affero General Public License for more details.
+
+You should have received a copy of the GNU Affero General Public License, version 3, along with this program. If not, see http://www.gnu.org/licenses/
+
 ## A short background
 I use to recode times sepent for stories/cards when I work on a project by using time tracker tools.
 It helps to analyze jobs and improving way of workings for next steps and future projects.
