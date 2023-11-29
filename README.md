@@ -27,7 +27,7 @@ Anyways a WOW optimization was started and the first idea was to use a real test
 
 ## What Shtest is
 Shtest is a practical framework to develop tests for shell scripts such as sh/bash/groovy.
-The framework contains several principals and and also a set of pre-coded tools to write and running tests.
+The framework contains several principals and also a set of pre-coded tools to write and running tests.
 Currently Shtest is published as a part of RepoUtils (a multi languages CI/CD/CT flow manager) and can be not installed
 as a separated package.
 
