@@ -1,0 +1,20 @@
+#: Stubbing values and data to test a script
+#:
+#: File : jenkinsjob.stubs.shinc
+#
+#
+# Nexttop 2022-2025 (nexttop.se)
+# Maintenance nexttop -> hossein a.t. (osxx.com)
+#-------------------------------------------------
+#
+# Local variables:
+#  TESTORIGINALSCRIPT_PATH
+#  SCRIPT_PATH
+#
+#-------------------------------------------------
+## Import libraries
+[ -f $TESTORIGINALSCRIPT_PATH/test.mock.shinc ] &&
+	. $TESTORIGINALSCRIPT_PATH/test.mock.shinc
+
+echo -e "****Runing in a test mode"
+echo -e "-------------------------------------------------"

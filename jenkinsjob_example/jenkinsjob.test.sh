@@ -4,7 +4,8 @@
 #: File : jenkinsjob.test.sh
 #
 #
-# Copyright (c) 2023 Nexttop (nexttop.se)
+# Nexttop 2023-2025 (nexttop.se)
+# Maintenance nexttop -> hossein a.t. (osxx.com)
 #---------------------------------------
 ## Import libraries
 TESTORIGINALSCRIPT_PATH=$( dirname $(realpath "$0") )
@@ -13,8 +14,9 @@ SCRIPT_NAME=jenkinsjob
 
 [ -f $TESTORIGINALSCRIPT_PATH/${SCRIPT_NAME}.sh ] &&
 	. $TESTORIGINALSCRIPT_PATH/${SCRIPT_NAME}.sh
-[ -f $TESTORIGINALSCRIPT_PATH/${SCRIPT_NAME}.overloader.shinc ] &&
-	. $TESTORIGINALSCRIPT_PATH/${SCRIPT_NAME}.overloader.shinc
+
+[ -f $TESTORIGINALSCRIPT_PATH/${SCRIPT_NAME}.stubs.shinc ] &&
+	. $TESTORIGINALSCRIPT_PATH/${SCRIPT_NAME}.stubs.shinc
 testExpects="test.expect.shinc"
 [ -f $TESTORIGINALSCRIPT_PATH/$testExpects ] &&
 	. $TESTORIGINALSCRIPT_PATH/$testExpects
@@ -52,27 +54,24 @@ function testTeardown()
 #*
 #*  @return			0 SUCCESS, > 0 FAILURE
 #*
+#@TEST
 function TEST_JENKINSJOB_REPORTFOUND ()
 {
-	isFileExist_return="0"
-	JenkinsJob -jenkinsjob -patchnumber 11 -patchrevision 12223 -changenumber 734223748 \
-		-project testproject -workspace $TESTORIGINALSCRIPT_PATH/testdata
-	checkrunnerExitCode=$?
+    ADDMOCK grep
+    ADDMOCK ssh
+	ADDMOCK isFileExist $(mockCreateParamList {0,}) $(mockCreateParamList {'-',})
+	ADDMOCK isDirExist $(mockCreateParamList {0,}) $(mockCreateParamList {'-',})
 
-	ExpectCall 'grep' 0
-	[ $? -ne 0 ] &&
-		return 1
-	ExpectCall 'ssh' 0
-		[ $? -ne 0 ] &&
-			return 1
-	ExpectCall 'isFileExist' 1
-		[ $? -ne 0 ] &&
-			return 1
-	ExpectCall 'isDirExist' 0
-		[ $? -ne 0 ] &&
-			return 1
-	[ $checkrunnerExitCode -ne 0 ] &&
-		return 1
+	output=$(JenkinsJob -jenkinsjob -patchnumber 11 -patchrevision 12223 -changenumber 734223748 \
+		-project testproject -workspace $TESTORIGINALSCRIPT_PATH/testdata)
+    JenkinsJobExitCode=$?
+    [ $JenkinsJobExitCode -ne 0 ] &&
+        echo -e "---\n$output\n---\n" &&
+        return 1
+
+    ExpectCalls grep:0 ssh:0 isFileExist:1 isDirExist:0
+    [ $? -ne 0 ] &&
+        return 1
 
 	return 0
 }
@@ -86,27 +85,24 @@ function TEST_JENKINSJOB_REPORTFOUND ()
 #*
 #*  @return			0 SUCCESS, > 0 FAILURE
 #*
+#@TEST
 function TEST_JENKINSJOB_REPORTNOTFOUND ()
 {
-	isFileExist_return="1"
-	JenkinsJob -jenkinsjob -patchnumber 11 -patchrevision 12223 -changenumber 734223748 \
-		-project testproject -workspace $TESTORIGINALSCRIPT_PATH/testdata
-	checkrunnerExitCode=$?
+    ADDMOCK grep
+    ADDMOCK ssh
+	ADDMOCK isFileExist $(mockCreateParamList {1,}) $(mockCreateParamList {'-',})
+	ADDMOCK isDirExist $(mockCreateParamList {0,}) $(mockCreateParamList {'-',})
 
-	ExpectCall 'grep' 0
-	[ $? -ne 0 ] &&
-		return 1
-	ExpectCall 'ssh' 0
-		[ $? -ne 0 ] &&
-			return 1
-	ExpectCall 'isFileExist' 1
-		[ $? -ne 0 ] &&
-			return 1
-	ExpectCall 'isDirExist' 0
-		[ $? -ne 0 ] &&
-			return 1
-	[ $checkrunnerExitCode -eq 0 ] &&
-		return 1
+	isFileExist_return="1"
+	output=$(JenkinsJob -jenkinsjob -patchnumber 11 -patchrevision 12223 -changenumber 734223748 \
+		-project testproject -workspace $TESTORIGINALSCRIPT_PATH/testdata)
+    [ $JenkinsJobExitCode -ne 0 ] &&
+        echo -e "---\n$output\n---\n" &&
+        return 1
+
+    ExpectCalls grep:0 ssh:0 isFileExist:1 isDirExist:0
+    [ $? -ne 0 ] &&
+        return 1
 
 	return 0
 }
@@ -123,39 +119,39 @@ function TEST_JENKINSJOB ()
 	return 0
 }
 
-
 # Main - run tests
 #---------------------------------------
-TEST_CASES=( 'TEST_JENKINSJOB_REPORTFOUND' \
-	'TEST_JENKINSJOB_REPORTNOTFOUND' \
-	'TEST_JENKINSJOB' )
+testGroup=""
+#testGroup=WORKING
+TEST_CASES=( $(grep -P -i -A1 "^#@TEST\s*$testGroup" $0 | grep '^\s*function' | cut -d' ' -f2) )
 
 exitCode=0
 $(testSetup)
 for testCase in "${TEST_CASES[@]}"
 do
-	TESTWORK_DIR=$(bash -c "mktemp -d")
-	export TESTWORK_TEMPORARYFOLDER=$TESTWORK_DIR
+    TESTWORK_DIR=$(bash -c "mktemp -d")
+    export TESTWORK_TEMPORARYFOLDER=$TESTWORK_DIR
 
-	echo -e "\n$testCase"
+    echo -e "\n$testCase"
 
-	echo "[RUN]"
-	exitCode=1
-	$testCase
-	exitCode=$?
-	[ $exitCode -ne 0 ] &&
-		echo "[FAILED]" &&
-		exitCode=1 &&
-		break
+    echo "[RUN]"
+    exitCode=1
+    $testCase
+    exitCode=$?
+    [ $exitCode -ne 0 ] &&
+        echo "[FAILED]" &&
+        exitCode=1 &&
+        break
 
-	echo "[PASSED]"
+    echo "[PASSED]"
 
-	unset TESTWORK_TEMPORARYFOLDER
-	bash -c "rm -r \"$TESTWORK_DIR\""
+    RESETMOCKS
+    unset TESTWORK_TEMPORARYFOLDER
+    bash -c "rm -r \"$TESTWORK_DIR\""
 done
 $(testTeardown)
 
 [ $exitCode -ne 0 ] &&
-	exit 1
+    exit 1
 
 exit 0

@@ -1,0 +1,104 @@
+#: Expecting mock calls
+#:
+#: File : test.expect.shinc
+#
+#
+# Nexttop 2023-2025 (nexttop.se)
+# Maintenance nexttop -> hossein a.t. (osxx.com)
+#-------------------------------------------------
+#
+# Local variables:
+#  ORIGINALSCRIPT_PATH
+#  SCRIPT_PATH
+#
+#-------------------------------------------------
+mockCountFile=mockcount
+
+function ExpectCalls () #@ USAGE ExpectCall funcName:expectTimes ...
+{
+    [ ! -f $TESTWORK_TEMPORARYFOLDER/$mockCountFile ] &&
+        return 0
+
+    mockCounterArr=( $($ocat $TESTWORK_TEMPORARYFOLDER/$mockCountFile | $osort -n | $ouniq -c | $oawk '{ print $2, $1 }' | $otr -s ' ') )
+    for item in "$@"
+    do
+        funcName=""
+        expectTimes=0
+        funcNameFoundFlag=0
+
+        if [ "${item//:/}" != "$item" ]; then
+            itemArray=(${item//:/ })
+            [ ${#itemArray[@]} != 2 ] &&
+                echo "Wrong statement '$item'!" &&
+                return 1
+            funcName=${itemArray[0]}
+            expectTimes=${itemArray[1]}
+            for (( i=0; i<${#mockCounterArr[@]} ; i+=2 )) ; do
+                if [ "${mockCounterArr[i]}" == "$funcName" ]; then
+                    funcNameFoundFlag=1
+                    [ "${mockCounterArr[i+1]}" -ne $expectTimes ] &&
+                        echo "'$funcName' : expected $expectTimes, actual calls ${mockCounterArr[i+1]}." &&
+                        $ogrep -n -E -w -o "^${funcName}.*" $TESTWORK_TEMPORARYFOLDER/$mockCallLogFile &&
+                        return 1
+                fi
+            done
+
+            if [ $funcNameFoundFlag -eq 0 ] && [ $expectTimes -ne 0 ]; then
+                echo "'$funcName' : expected $expectTimes, actual calls 0."
+                return 1
+            fi
+        fi
+    done
+    return 0
+}
+
+function ExpectCall () #@ USAGE ExpectCall funcName expectTimes
+{
+    output=$(ExpectCalls $1:$2)
+    ExpectCallsExitcode=$?
+    [ "$output" != "" ] &&
+        echo "$output"
+    return $ExpectCallsExitcode
+    
+}
+
+function ExpectOutputs () #@ USAGE ExpectOutputs funcName//expectOutput ...
+{
+    for item in "$@"
+    do
+        if [ "${item//\/\//}" != "$item" ]; then
+            itemArray=(${item//\/\// })
+            if [ ${#itemArray[@]} -gt 2 ]; then
+                echo "Wrong statement '$item'!" &&
+                return 1
+            elif [ ${#itemArray[@]} == 2 ]; then
+                funcName=${itemArray[0]}
+                expectOutput=${itemArray[1]}
+                if [ "$expectOutput" != "-" ] && [ "$expectOutput" != "" ]; then
+                    lastCallInfo=$(mockGetCallInfo $funcName)
+                     [ ! -z ${lastCallInfo+x} ] &&
+                        [ "${lastCallInfo//$expectOutput/}" == "$lastCallInfo" ] &&
+                            echo "The output is not matched ('$funcName : $lastCallInfo' <~#> '$expectOutput')!" &&
+                            return 1
+                fi
+            fi
+        fi
+    done
+    return 0
+}
+
+function ExpectOutput () #@ USAGE ExpectCall funcName expectOutput
+{
+    funcName=$1
+    expectOutput=$2
+    timeNumber='-1'
+    [ $# -gt 2 ] &&
+        timeNumber=$3
+
+    lastCallInfo=$(mockGetCallInfo $funcName $timeNumber)
+    [ ! -z ${lastCallInfo+x} ] &&
+        [ "${lastCallInfo//$expectOutput/}" == "$lastCallInfo" ] &&
+            echo "The output is not matched ('$funcName : $lastCallInfo' <~#> '$expectOutput')!" &&
+            return 1
+    return 0
+}

@@ -1,7 +1,7 @@
-# Shtest - A simple test framework for shell scripts such as sh/bash/groovy
+# shMock - A simple test framework for shell scripts such as sh/bash/groovy
 
 ## License
-license AGPL-3.0 This code and the package of Shtest are free software: you can redistribute it and/or modify it under the terms of the GNU Affero General Public License, version 3, as published by the Free Software Foundation.
+license AGPL-3.0 This code and the package of shMock are free software: you can redistribute it and/or modify it under the terms of the GNU Affero General Public License, version 3, as published by the Free Software Foundation.
 
 This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Affero General Public License for more details.
 
@@ -25,18 +25,139 @@ that the Jenkins it self is run under Tomcat.
 
 Anyways a WOW optimization was started and the first idea was to use a real test system for scripts to decrease numbers of faced issues after being implemented to the main flow.
 
-## What Shtest is
-Shtest is a practical framework to develop tests for shell scripts such as sh/bash/groovy.
+## What shMock is
+shMock is a practical framework to develop tests for shell scripts such as sh/bash/groovy.
 The framework contains several principals and also a set of pre-coded tools to write and running tests.
-Currently Shtest is published as a part of RepoUtils (a multi languages CI/CD/CT flow manager) and can be not installed
-as a separated package.
+shMock is developed pn a private repo and its GitHub fork is only updated for major changes and hotfixes.
 
-# An overview of Shtest
-Shtest is based on a very simple idea and the tools provided Shtest helps to automate steps to make it faster and more structured.
+# An overview of shMock
+If you are familiar with GMock and other standard test frameworks, you have already know how to work with shMock!
+shMock is based on a very simple idea to mock and stubbing commands and functions used with a shell script to have control how a bunch of shell script lines works together.
+The libraries provided by shMock help to automate steps to develop scripts especially CI/DI scripts to make it faster and more structured.
+Both on development processes flows and seystem automations specially Linux based embededed systems scripts plays big role.
+< NEED TO BE UPDATED >
 
-Using Shtest framework itself does not need necessary to install Shtest package but having Shtest package can automate several of the steps on the simple example below. 
-The test framework is mostly about following principles.
+# Quick start
+Using shMock framework itself is not difficult.
+< NEED TO BE UPDATED >
 
+```
+#!/bin/bash
+#: jenkinsjob test
+#:
+#: File : jenkinsjob.test.sh
+#
+#
+# Nexttop 2023-2025 (nexttop.se)
+# Maintenance nexttop -> hossein a.t. (osxx.com)
+#---------------------------------------
+## Import libraries
+TESTORIGINALSCRIPT_PATH=$( dirname $(realpath "$0") )
+SCRIPT_PATH=$( dirname "$0")
+SCRIPT_NAME=jenkinsjob
+
+[ -f $TESTORIGINALSCRIPT_PATH/${SCRIPT_NAME}.sh ] &&
+	. $TESTORIGINALSCRIPT_PATH/${SCRIPT_NAME}.sh
+
+[ -f $TESTORIGINALSCRIPT_PATH/${SCRIPT_NAME}.stubs.shinc ] &&
+	. $TESTORIGINALSCRIPT_PATH/${SCRIPT_NAME}.stubs.shinc
+testExpects="test.expect.shinc"
+[ -f $TESTORIGINALSCRIPT_PATH/$testExpects ] &&
+	. $TESTORIGINALSCRIPT_PATH/$testExpects
+
+#*
+#*  @description    Test setup
+#*
+#*  @param
+#*
+#*  @return			0 SUCCESS, > 0 FAILURE
+#*
+function testSetup()
+{
+	return 0
+}
+
+#*
+#*  @description    Test teardown
+#*
+#*  @param
+#*
+#*  @return			0 SUCCESS, > 0 FAILURE
+#*
+function testTeardown()
+{
+	return 0
+}
+
+#*
+#*  @description    Test jenkinsjob
+#*  	Test jenkinsjob when :
+#*  		- The report file is found
+#*
+#*  @param
+#*
+#*  @return			0 SUCCESS, > 0 FAILURE
+#*
+#@TEST
+function TEST_JENKINSJOB_REPORTFOUND ()
+{
+    ADDMOCK grep
+    ADDMOCK ssh
+	ADDMOCK isFileExist $(mockCreateParamList {0,}) $(mockCreateParamList {'-',})
+	ADDMOCK isDirExist $(mockCreateParamList {0,}) $(mockCreateParamList {'-',})
+
+	output=$(JenkinsJob -jenkinsjob -patchnumber 11 -patchrevision 12223 -changenumber 734223748 \
+		-project testproject -workspace $TESTORIGINALSCRIPT_PATH/testdata)
+    JenkinsJobExitCode=$?
+    [ $JenkinsJobExitCode -ne 0 ] &&
+        echo -e "---\n$output\n---\n" &&
+        return 1
+
+    ExpectCalls grep:0 ssh:0 isFileExist:1 isDirExist:0
+    [ $? -ne 0 ] &&
+        return 1
+
+	return 0
+}
+
+# Main - run tests
+#---------------------------------------
+testGroup=""
+#testGroup=WORKING
+TEST_CASES=( $(grep -P -i -A1 "^#@TEST\s*$testGroup" $0 | grep '^\s*function' | cut -d' ' -f2) )
+
+exitCode=0
+$(testSetup)
+for testCase in "${TEST_CASES[@]}"
+do
+    TESTWORK_DIR=$(bash -c "mktemp -d")
+    export TESTWORK_TEMPORARYFOLDER=$TESTWORK_DIR
+
+    echo -e "\n$testCase"
+
+    echo "[RUN]"
+    exitCode=1
+    $testCase
+    exitCode=$?
+    [ $exitCode -ne 0 ] &&
+        echo "[FAILED]" &&
+        exitCode=1 &&
+        break
+
+    echo "[PASSED]"
+
+    RESETMOCKS
+    unset TESTWORK_TEMPORARYFOLDER
+    bash -c "rm -r \"$TESTWORK_DIR\""
+done
+$(testTeardown)
+
+[ $exitCode -ne 0 ] &&
+    exit 1
+
+exit 0
+
+```
 ## Jenkinsjob - A very simple example
 This example shows how to test a script that is developed to use with in a groovy script.
 The groovy script used by this example is only one line that calls a bash script and it is not considered by this example.

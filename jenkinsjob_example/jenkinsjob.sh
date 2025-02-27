@@ -4,7 +4,8 @@
 #: File : jenkinsjob.sh
 #
 #
-# Copyright (c) 2022 Nexttop (nexttop.se)
+# Nexttop 2023-2025 (nexttop.se)
+# Maintenance nexttop -> hossein a.t. (osxx.com)
 #---------------------------------------
 #
 # Environment variables passd by Gerrit trigger:
