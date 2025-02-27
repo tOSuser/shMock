@@ -42,7 +42,7 @@ Using shMock framework itself is not difficult.
 < NEED TO BE UPDATED >
 
 * Example 1:
-```
+```bash
 #!/bin/bash
 #: jenkinsjob test
 #:
@@ -161,7 +161,7 @@ exit 0
 ```
 
 * Example 2
-```
+```bash
 #*
 #*  @description    Test adding a new host who does not exist
 #*
