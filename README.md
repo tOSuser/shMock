@@ -41,6 +41,7 @@ Both on development processes flows and seystem automations specially Linux base
 Using shMock framework itself is not difficult.
 < NEED TO BE UPDATED >
 
+* Example 1:
 ```
 #!/bin/bash
 #: jenkinsjob test
@@ -103,8 +104,8 @@ function TEST_JENKINSJOB_REPORTFOUND ()
 {
     ADDMOCK grep
     ADDMOCK ssh
-	ADDMOCK isFileExist $(mockCreateParamList {0,}) $(mockCreateParamList {'-',})
-	ADDMOCK isDirExist $(mockCreateParamList {0,}) $(mockCreateParamList {'-',})
+    ADDMOCK isFileExist $(mockCreateParamList {0,}) $(mockCreateParamList {'-',})
+    ADDMOCK isDirExist $(mockCreateParamList {0,}) $(mockCreateParamList {'-',})
 
 	output=$(JenkinsJob -jenkinsjob -patchnumber 11 -patchrevision 12223 -changenumber 734223748 \
 		-project testproject -workspace $TESTORIGINALSCRIPT_PATH/testdata)
@@ -156,6 +157,163 @@ $(testTeardown)
     exit 1
 
 exit 0
+
+```
+
+* Example 2
+```
+#*
+#*  @description    Test adding a new host who does not exist
+#*
+#*  @param
+#*
+#*  @return            0 SUCCESS, > 0 FAILURE
+#*
+#@TEST
+function TEST_WHMAN_ADDHOST ()
+{
+    # Add a new host to a group who does not exist
+    #----
+    ADDMOCK grep
+    ADDMOCK cut
+    ADDMOCK tail
+    ADDMOCK sed
+    ADDMOCK cp
+    ADDMOCK cat
+    ADDMOCK find
+    ADDMOCK mkdir
+    ADDMOCK which $(mockCreateParamList {0,}) $(mockCreateParamList {'docker-path',})
+    ADDMOCK docker $(mockCreateParamList {0,0,}) $(mockCreateParamList {'true','1.1.1.1'})
+
+    basePath=$TESTORIGINALSCRIPT_PATH/testdata/webhost
+    startUID=9001
+    startGID=9001
+    userName=sitec
+    siteName=$userName
+    groupName=newgroup
+
+    output=$(addHost $basePath $startUID $siteName $startGID $groupName)
+    addHostExitCode=$?
+    [ $addHostExitCode -ne 0 ] &&
+        echo -e "---\n$output\n---\n" &&
+        return 1
+
+    expectExtraInfo=$(ExpectOutput "grep" "^sitec:.:.*:.*$" '1')
+    ExpectOutputExitcode=$?
+    [ "$expectExtraInfo" != "" ] &&
+        echo -e "$expectExtraInfo"
+    [ $ExpectOutputExitcode -ne 0 ] &&
+        return 1
+
+    expectExtraInfo=$(ExpectOutput "grep" "^newgroup:.:.*:.*$" '2')
+    ExpectOutputExitcode=$?
+    [ "$expectExtraInfo" != "" ] &&
+        echo -e "$expectExtraInfo"
+    [ $ExpectOutputExitcode -ne 0 ] &&
+        return 1
+
+
+    expectExtraInfo=$(ExpectOutput "sed" "s/newgroup:x:9003:/newgroup:x:9003:sitec/g" '1')
+    ExpectOutputExitcode=$?
+    [ "$expectExtraInfo" != "" ] &&
+        echo -e "$expectExtraInfo"
+    [ $ExpectOutputExitcode -ne 0 ] &&
+        return 1
+
+    expectExtraInfo=$(ExpectOutputs "grep//^newgroup:.:.*:.*$" "grep//etc/group")
+    ExpectOutputsExitcode=$?
+    [ "$expectExtraInfo" != "" ] &&
+        echo -e "$expectExtraInfo"
+    [ $ExpectOutputsExitcode -ne 0 ] &&
+        return 1
+
+    ExpectCalls grep:14 cut:11 tail:11 sed:12 cp:5 cat:3 mkdir:1 which:1 docker:2
+    [ $? -ne 0 ] &&
+        return 1
+
+    RESETMOCKS
+
+    # Add a new host to a group who exists
+    #----
+    ADDMOCK grep
+    ADDMOCK cut
+    ADDMOCK tail
+    ADDMOCK sed
+    ADDMOCK cp
+    ADDMOCK cat
+    ADDMOCK find
+    ADDMOCK mkdir
+    ADDMOCK which $(mockCreateParamList {0,}) $(mockCreateParamList {'docker-path',})
+    ADDMOCK docker $(mockCreateParamList {0,0,}) $(mockCreateParamList {'true','1.1.1.1'})
+
+    userName=sited
+    siteName=$userName
+    groupName=newgroup
+
+    output=$(addHost $basePath $startUID $siteName $startGID $groupName)
+    addHostExitCode=$?
+    [ $addHostExitCode -ne 0 ] &&
+        echo -e "---\n$output\n---\n" &&
+        return 1
+
+    expectExtraInfo=$(ExpectOutput "grep" "^sited:.:.*:.*$" '1')
+    ExpectOutputExitcode=$?
+    [ "$expectExtraInfo" != "" ] &&
+        echo -e "$expectExtraInfo"
+    [ $ExpectOutputExitcode -ne 0 ] &&
+        return 1
+
+    expectExtraInfo=$(ExpectOutput "grep" "^newgroup:.:.*:.*$" '2')
+    ExpectOutputExitcode=$?
+    [ "$expectExtraInfo" != "" ] &&
+        echo -e "$expectExtraInfo"
+    [ $ExpectOutputExitcode -ne 0 ] &&
+        return 1
+
+    expectExtraInfo=$(ExpectOutput "sed" "s/newgroup:x:9003:sitec/newgroup:x:9003:sitec,sited/g" '1')
+    ExpectOutputExitcode=$?
+    [ "$expectExtraInfo" != "" ] &&
+        echo -e "$expectExtraInfo"
+    [ $ExpectOutputExitcode -ne 0 ] &&
+        return 1
+
+    expectExtraInfo=$(ExpectOutputs "grep//^newgroup:.:.*:.*$" "grep//etc/group")
+    ExpectOutputsExitcode=$?
+    [ "$expectExtraInfo" != "" ] &&
+        echo -e "$expectExtraInfo"
+    [ $ExpectOutputsExitcode -ne 0 ] &&
+        return 1
+
+    ExpectCalls grep:13 cut:10 tail:10 sed:12 cp:5 cat:3 mkdir:1 which:1 docker:2
+    [ $? -ne 0 ] &&
+        return 1
+
+    RESETMOCKS
+
+    # Verify the added host
+    #----
+    ADDMOCK which $(mockCreateParamList {0,}) $(mockCreateParamList {'docker-path',})
+    ADDMOCK docker $(mockCreateParamList {0,0,0,0,0,0,}) $(mockCreateParamList {'true','sitec','newgroup','true','sited','newgroup',})
+
+    userName=sitec
+    siteName=$userName
+    VerifyOutput=$(verifyHost $basePath $siteName $groupName)
+    verifyHostExitcode=$?
+    [ $verifyHostExitcode -ne 0 ] &&
+        echo -e "$VerifyOutput" &&
+        return 1
+    userName=sited
+    siteName=$userName
+    VerifyOutput=$(verifyHost $basePath $siteName $groupName)
+    verifyHostExitcode=$?
+    [ $verifyHostExitcode -ne 0 ] &&
+        echo -e "$VerifyOutput" &&
+        return 1
+
+    ExpectCalls which:2 docker:6
+
+    return 0
+}
 
 ```
 ## Jenkinsjob - A very simple example
