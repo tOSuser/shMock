@@ -1,4 +1,4 @@
-#: Mocking commands and statements
+#: shMock framework library
 #:
 #: File : test.mock.shinc
 #
@@ -12,37 +12,71 @@
 #  SCRIPT_PATH
 #
 #-------------------------------------------------
-owhich=$(which which)
-ocat=$(which cat)
-ogrep=$(which grep)
-osort=$(which sort)
-osed=$(which sed)
-otr=$(which tr)
-ouniq=$(which uniq)
-oawk=$(which awk)
-orm=$(which rm)
+cmdForInternalUsages="which
+    cat
+    grep
+    sort
+    sed
+    tr
+    uniq
+    awk
+    rm"
+for item in ${cmdForInternalUsages};
+do
+    eval o${item}=$(which $item)
+done
 
 mockCountFile=mockcount
 mockCallLogFile=mockcalllog
 mockedFuncList=()
 
+#*
+#*  @description    Reset mock caches by removing the test temporary folder
+#*
+#*  @params         N/A
+#*
+#*  @return         N/A
+#*
 function mockReset () #@ USAGE mockReset
 {
     $orm -rfv $TESTWORK_TEMPORARYFOLDER/* 1> /dev/null || true
 }
 
+#*
+#*  @description    Increase the counter for the given funcName by one unit
+#*                  and log the arguments passed during calling the funcName
+#*
+#*  @params         funcName
+#*
+#*  @return         N/A
+#*
 function mockCallCounter () #@ USAGE mockCallCounter funcName
 {
     funcName=$1
     echo "$funcName" >> $TESTWORK_TEMPORARYFOLDER/$mockCountFile
     echo "${@}" >> $TESTWORK_TEMPORARYFOLDER/$mockCallLogFile
 }
-function mockCallLog () #@ USAGE mockCallPipLog
+
+#*
+#*  @description    Log the arguments passed during piping
+#*
+#*  @params         N/A
+#*
+#*  @return         N/A
+#*
+function mockCallLog () #@ USAGE mockCallLog
 {
     echo "-${@}" >> $TESTWORK_TEMPORARYFOLDER/$mockCallLogFile
 }
 
-function mockCallOutput () #@ USAGE funcName defaultValue
+#*
+#*  @description    Find and print the output for the given funcName
+#*
+#*  @params         funcName, defaultValue
+#*
+#*  @return         N/A
+#*
+function mockCallOutput () #@ USAGE mockCallOutput funcName defaultValue
 {
     funcName=$1
     defaultValue=$2
@@ -73,7 +107,14 @@ function mockCallOutput () #@ USAGE funcName defaultValue
     fi
 }
 
-function mockCallReturn () #@ USAGE funcName defaultValue
+#*
+#*  @description    Find the return code for the given funcName
+#*
+#*  @params         funcName, defaultValue
+#*
+#*  @return         return code
+#*
+function mockCallReturn () #@ USAGE mockCallReturn funcName defaultValue
 {
     funcName=$1
     defaultValue=$2
@@ -99,6 +140,13 @@ function mockCallReturn () #@ USAGE funcName defaultValue
     return $(($currentTimeReturn))
 }
 
+#*
+#*  @description    Print the call counter for the given funcName
+#*
+#*  @params         funcName
+#*
+#*  @return         0
+#*
 function mockCallGetTimes () #@ USAGE mockCallGetTimes funcName
 {
     funcName=$1
@@ -117,6 +165,13 @@ function mockCallGetTimes () #@ USAGE mockCallGetTimes funcName
     return 0
 }
 
+#*
+#*  @description    Print the logged info for the given funcName 
+#*
+#*  @params         funcName, timeNumber
+#*
+#*  @return         0 or 1
+#*
 function mockGetCallInfo () #@ USAGE mockGetCallInfo funcName timeNumber
 {
     funcName=$1
@@ -136,6 +191,13 @@ function mockGetCallInfo () #@ USAGE mockGetCallInfo funcName timeNumber
     return $exitCode
 }
 
+#*
+#*  @description    Create a list
+#*
+#*  @params         dataNamePerfix, numberOfItems
+#*
+#*  @return         N/A
+#*
 function mockCreateDataList () #@ USAGE mockCreateDataList dataNamePerfix numberOfItems
 {
     dataNamePerfix=$1
@@ -148,12 +210,26 @@ function mockCreateDataList () #@ USAGE mockCreateDataList dataNamePerfix number
     echo "${dataArrayStr}"
 }
 
+#*
+#*  @description    Convert [:space:] to <;>
+#*
+#*  @params         parameters
+#*
+#*  @return         N/A
+#*
 function mockCreateParamList () #@ USAGE mockCreateParamList parameters
 {
     params=$@
     echo ${params// /'<;>'}
 }
 
+#*
+#*  @description    The default function called by the mocked items
+#*
+#*  @params         funcName
+#*
+#*  @return         An exit code
+#*
 function defaultMockFunc ()#@ USAGE defaultMockFunc funcName
 {
     funcName=$1
@@ -186,7 +262,14 @@ function defaultMockFunc ()#@ USAGE defaultMockFunc funcName
     return $?
 }
 
-function ADDMOCK () #@ USAGE MOCK cmd cmdReturn cmdOutput
+#*
+#*  @description    Create mock for the given cmd  
+#*
+#*  @params         cmd, cmdReturn, cmdOutput
+#*
+#*  @return         N/A
+#*
+function ADDMOCK () #@ USAGE ADDMOCK cmd cmdReturn cmdOutput
 {
     cmd=$1
 
@@ -222,6 +305,13 @@ EOF
 
 }
 
+#*
+#*  @description    Set expect and return code for a mocked cmd
+#*
+#*  @params         cmd, cmdReturn, cmdOutput
+#*
+#*  @return         N/A
+#*
 function SETEXPECT () #@ USAGE SETEXPECT cmd cmdReturn cmdOutput
 {
     cmd=$1
@@ -242,6 +332,129 @@ EOF
 
 }
 
+#*
+#*  @description    Check expect calls for given funcName(s)
+#*
+#*  @params         funcName:expectTimes
+#*
+#*  @return         0 or 1
+#*
+function ExpectCalls () #@ USAGE ExpectCalls funcName:expectTimes ...
+{
+    [ ! -f $TESTWORK_TEMPORARYFOLDER/$mockCountFile ] &&
+        return 0
+
+    mockCounterArr=( $($ocat $TESTWORK_TEMPORARYFOLDER/$mockCountFile | $osort -n | $ouniq -c | $oawk '{ print $2, $1 }' | $otr -s ' ') )
+    for item in "$@"
+    do
+        funcName=""
+        expectTimes=0
+        funcNameFoundFlag=0
+
+        if [ "${item//:/}" != "$item" ]; then
+            itemArray=(${item//:/ })
+            [ ${#itemArray[@]} != 2 ] &&
+                echo "Wrong statement '$item'!" &&
+                return 1
+            funcName=${itemArray[0]}
+            expectTimes=${itemArray[1]}
+            for (( i=0; i<${#mockCounterArr[@]} ; i+=2 )) ; do
+                if [ "${mockCounterArr[i]}" == "$funcName" ]; then
+                    funcNameFoundFlag=1
+                    [ "${mockCounterArr[i+1]}" -ne $expectTimes ] &&
+                        echo "'$funcName' : expected $expectTimes, actual calls ${mockCounterArr[i+1]}." &&
+                        $ogrep -n -E -w -o "^${funcName}.*" $TESTWORK_TEMPORARYFOLDER/$mockCallLogFile &&
+                        return 1
+                fi
+            done
+
+            if [ $funcNameFoundFlag -eq 0 ] && [ $expectTimes -ne 0 ]; then
+                echo "'$funcName' : expected $expectTimes, actual calls 0."
+                return 1
+            fi
+        fi
+    done
+    return 0
+}
+
+#*
+#*  @description    Check expect calls for given funcName
+#*
+#*  @params         funcName, expectTimes
+#*
+#*  @return         0 or 1
+#*
+function ExpectCall () #@ USAGE ExpectCall funcName expectTimes
+{
+    output=$(ExpectCalls $1:$2)
+    ExpectCallsExitcode=$?
+    [ "$output" != "" ] &&
+        echo "$output"
+    return $ExpectCallsExitcode
+}
+
+#*
+#*  @description    Check expect output for given funcName(s)
+#*
+#*  @params         funcName//expectOutput
+#*
+#*  @return         0 or 1
+#*
+function ExpectOutputs () #@ USAGE ExpectOutputs funcName//expectOutput ...
+{
+    for item in "$@"
+    do
+        if [ "${item//\/\//}" != "$item" ]; then
+            itemArray=(${item//\/\// })
+            if [ ${#itemArray[@]} -gt 2 ]; then
+                echo "Wrong statement '$item'!" &&
+                return 1
+            elif [ ${#itemArray[@]} == 2 ]; then
+                funcName=${itemArray[0]}
+                expectOutput=${itemArray[1]}
+                if [ "$expectOutput" != "-" ] && [ "$expectOutput" != "" ]; then
+                    lastCallInfo=$(mockGetCallInfo $funcName)
+                     [ ! -z ${lastCallInfo+x} ] &&
+                        [ "${lastCallInfo//$expectOutput/}" == "$lastCallInfo" ] &&
+                            echo "The output is not matched ('$funcName : $lastCallInfo' <~#> '$expectOutput')!" &&
+                            return 1
+                fi
+            fi
+        fi
+    done
+    return 0
+}
+
+#*
+#*  @description    Check expect output for given funcName
+#*
+#*  @params         funcName, expectOutput
+#*
+#*  @return         0 or 1
+#*
+function ExpectOutput () #@ USAGE ExpectCall funcName expectOutput
+{
+    funcName=$1
+    expectOutput=$2
+    timeNumber='-1'
+    [ $# -gt 2 ] &&
+        timeNumber=$3
+
+    lastCallInfo=$(mockGetCallInfo $funcName $timeNumber)
+    [ ! -z ${lastCallInfo+x} ] &&
+        [ "${lastCallInfo//$expectOutput/}" == "$lastCallInfo" ] &&
+            echo "The output is not matched ('$funcName : $lastCallInfo' <~#> '$expectOutput')!" &&
+            return 1
+    return 0
+}
+
+#*
+#*  @description    Delete mock for the given cmd
+#*
+#*  @params         cmd
+#*
+#*  @return         N/A
+#*
 function REMOVEMOCK () #@ USAGE REMOVEMOCK cmd
 {
     cmd=$1
@@ -256,6 +469,13 @@ function REMOVEMOCK () #@ USAGE REMOVEMOCK cmd
     mockedFuncList=("${mockedFuncList[@]/#$cmd}")
 }
 
+#*
+#*  @description    Delete all mocks
+#*
+#*  @params         N/A
+#*
+#*  @return         N/A
+#*
 function RESETMOCKS () #@ USAGE RESETMOCKS
 {
     currentCmdList=( "${mockedFuncList[@]}" )

@@ -15,11 +15,8 @@ SCRIPT_NAME=jenkinsjob
 [ -f $TESTORIGINALSCRIPT_PATH/${SCRIPT_NAME}.sh ] &&
 	. $TESTORIGINALSCRIPT_PATH/${SCRIPT_NAME}.sh
 
-[ -f $TESTORIGINALSCRIPT_PATH/${SCRIPT_NAME}.stubs.shinc ] &&
-	. $TESTORIGINALSCRIPT_PATH/${SCRIPT_NAME}.stubs.shinc
-testExpects="test.expect.shinc"
-[ -f $TESTORIGINALSCRIPT_PATH/$testExpects ] &&
-	. $TESTORIGINALSCRIPT_PATH/$testExpects
+[ -f $TESTORIGINALSCRIPT_PATH/${SCRIPT_NAME}.overloader.shinc ] &&
+	. $TESTORIGINALSCRIPT_PATH/${SCRIPT_NAME}.overloader.shinc
 
 #*
 #*  @description    Test setup
